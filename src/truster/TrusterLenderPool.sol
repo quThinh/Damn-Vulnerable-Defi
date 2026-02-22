@@ -17,6 +17,9 @@ contract TrusterLenderPool is ReentrancyGuard {
         token = _token;
     }
 
+    // This function is vulnerable to the truster attack.
+    // the callback using low level call, so it will call the function with the data provided.
+    // we can use our decided target and data to call the function with the data provided.
     function flashLoan(uint256 amount, address borrower, address target, bytes calldata data)
         external
         nonReentrant
