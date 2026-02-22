@@ -32,6 +32,9 @@ contract SideEntranceLenderPool {
         SafeTransferLib.safeTransferETH(msg.sender, amount);
     }
 
+    // we have function to deposit and withdraw, so we can use this function to flash loan ETH
+    // the flashloan function only check balance of pool after the callback function is executed
+    // this mean deposit in the callback function can make the pool balance increase again and match the condition
     function flashLoan(uint256 amount) external {
         uint256 balanceBefore = address(this).balance;
 
