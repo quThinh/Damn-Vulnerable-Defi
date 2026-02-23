@@ -77,6 +77,9 @@ contract TheRewarderDistributor {
         }
     }
 
+    // Because the _setClaimed function only check the claim of the same token in the same batch,
+    // we can claim the rewards of same tokens multiple times in a single transaction without 
+    // being detected as already claimed.
     // Allow claiming rewards of multiple tokens in a single transaction
     function claimRewards(Claim[] memory inputClaims, IERC20[] memory inputTokens) external {
         Claim memory inputClaim;
