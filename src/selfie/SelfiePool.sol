@@ -47,6 +47,8 @@ contract SelfiePool is IERC3156FlashLender, ReentrancyGuard {
         return 0;
     }
 
+    // The token we could flash loan from this contract is used in governance contract,
+    // so we can use the emergencyExit function to transfer the token to the recovery address.
     function flashLoan(IERC3156FlashBorrower _receiver, address _token, uint256 _amount, bytes calldata _data)
         external
         nonReentrant
