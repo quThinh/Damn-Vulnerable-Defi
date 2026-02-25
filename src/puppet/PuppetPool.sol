@@ -56,6 +56,9 @@ contract PuppetPool is ReentrancyGuard {
         return amount * _computeOraclePrice() * DEPOSIT_FACTOR / 10 ** 18;
     }
 
+    // To rescue all the token in the pool, we need to set the price of the token to 0 all small enough.
+    // This mean the amount of eth is lots smaller than the amount of token.
+    // Because player can only execute 1 transaction, we need to approve and make all logic in constructor.
     function _computeOraclePrice() private view returns (uint256) {
         // calculates the price of the token in wei according to Uniswap pair
         return uniswapPair.balance * (10 ** 18) / token.balanceOf(uniswapPair);
