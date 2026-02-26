@@ -52,11 +52,12 @@ contract PuppetV2Pool {
         return _getOracleQuote(tokenAmount) * depositFactor / 1 ether;
     }
 
+    // The issue remains when the tokenAmount and ETH amount in the pair is too small.
     // Fetch the price from Uniswap v2 using the official libraries
     function _getOracleQuote(uint256 amount) private view returns (uint256) {
         (uint256 reservesWETH, uint256 reservesToken) =
             UniswapV2Library.getReserves({factory: _uniswapFactory, tokenA: address(_weth), tokenB: address(_token)});
-
+        // return amount * 10 ** 18 * reservesWETH / reservesToken
         return UniswapV2Library.quote({amountA: amount * 10 ** 18, reserveA: reservesToken, reserveB: reservesWETH});
     }
 }
